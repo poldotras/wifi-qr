@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tarjetas WiFi · Generador con QR</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #eef1f4;
+    --ink: #14202b;
+    --ink-soft: #5a6b7a;
+    --card: #ffffff;
+    --line: #d3dae1;
+    --accent: #0b5fff;
+    --accent-dark: #0847bd;
+    --danger: #c0392b;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  header.app { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 28px; }
+  header.app h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
+  header.app h1 .dot { color: var(--accent); }
+  header.app p { color: var(--ink-soft); font-size: 0.9rem; }
+
+  /* ---------- Formulario ---------- */
+  form#addForm {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1.4fr auto;
+    gap: 14px;
+    align-items: end;
+    box-shadow: 0 1px 3px rgba(20,32,43,.06);
+  }
+  .field label { display: block; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin-bottom: 6px; }
+  .field input, .field select {
+    width: 100%;
+    font: inherit;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fbfcfd;
+    color: var(--ink);
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .field input:focus-visible, .field select:focus-visible {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(11,95,255,.15);
+  }
+  .field input:disabled { background: #eef1f4; color: var(--ink-soft); cursor: not-allowed; }
+  .pw-wrap { position: relative; }
+  .pw-wrap button {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    border: none; background: none; cursor: pointer; font-size: 0.75rem;
+    color: var(--ink-soft); padding: 4px 6px; border-radius: 6px;
+  }
+  .pw-wrap button:hover { color: var(--ink); background: var(--bg); }
+
+  button.primary {
+    font: inherit; font-weight: 500;
+    background: var(--accent); color: #fff;
+    border: none; border-radius: 8px;
+    padding: 11px 20px; cursor: pointer;
+    transition: background .15s;
+    white-space: nowrap;
+  }
+  button.primary:hover { background: var(--accent-dark); }
+  button.primary:focus-visible { outline: 3px solid rgba(11,95,255,.35); outline-offset: 2px; }
+
+  .form-extra { grid-column: 1 / -1; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  .form-extra label { display: flex; gap: 7px; align-items: center; font-size: 0.85rem; color: var(--ink-soft); cursor: pointer; }
+  .form-error { grid-column: 1 / -1; color: var(--danger); font-size: 0.85rem; display: none; }
+
+  /* ---------- Barra de acciones ---------- */
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin: 30px 0 16px; flex-wrap: wrap; gap: 10px; }
+  .toolbar h2 { font-size: 1.05rem; font-weight: 500; color: var(--ink-soft); }
+  .toolbar .actions { display: flex; gap: 10px; }
+  button.ghost {
+    font: inherit; font-size: 0.88rem; font-weight: 500;
+    background: var(--card); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 16px; cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  button.ghost:hover { border-color: var(--accent); color: var(--accent); }
+  button.ghost:focus-visible { outline: 3px solid rgba(11,95,255,.35); outline-offset: 2px; }
+
+  /* ---------- Tarjetas ---------- */
+  #cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 18px; }
+  .empty {
+    grid-column: 1 / -1;
+    border: 2px dashed var(--line);
+    border-radius: var(--radius);
+    padding: 48px 20px;
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+  }
+
+  .wifi-card {
+    background: var(--card);
+    border: 2px dashed #9fb0bf;          /* línea de recorte */
+    border-radius: var(--radius);
+    padding: 22px 22px 18px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 18px;
+    position: relative;
+    animation: pop .25s ease;
+  }
+  @keyframes pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .wifi-card { animation: none; } }
+
+  .wifi-card .meta { min-width: 0; display: flex; flex-direction: column; }
+  .wifi-card .eyebrow {
+    font-size: 0.68rem; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .wifi-card .eyebrow::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .wifi-card .ssid {
+    font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em;
+    word-break: break-all; margin-bottom: 12px;
+  }
+  .cred { margin-bottom: 10px; }
+  .cred .label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); margin-bottom: 2px; }
+  .cred .value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.98rem; font-weight: 500;
+    word-break: break-all;
+  }
+  .badge {
+    display: inline-block; margin-top: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem; font-weight: 600;
+    background: var(--bg); border: 1px solid var(--line);
+    border-radius: 999px; padding: 3px 10px;
+    color: var(--ink-soft); align-self: flex-start;
+  }
+
+  .qr-box { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .qr-box .qr { background: #fff; padding: 6px; border: 1px solid var(--line); border-radius: 8px; line-height: 0; }
+  .qr-box .hint { font-size: 0.65rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .08em; }
+
+  .card-actions {
+    position: absolute; top: 10px; right: 10px;
+    display: flex; gap: 6px; opacity: 0; transition: opacity .15s;
+  }
+  .wifi-card:hover .card-actions, .wifi-card:focus-within .card-actions { opacity: 1; }
+  .card-actions button {
+    border: 1px solid var(--line); background: var(--card);
+    border-radius: 7px; padding: 5px 9px; font-size: 0.72rem;
+    cursor: pointer; font-family: inherit; color: var(--ink-soft);
+  }
+  .card-actions button:hover { color: var(--accent); border-color: var(--accent); }
+  .card-actions button.del:hover { color: var(--danger); border-color: var(--danger); }
+
+  @media (max-width: 980px) {
+    form#addForm { grid-template-columns: 1fr 1fr; }
+    form#addForm button.primary { grid-column: 1 / -1; }
+  }
+  @media (max-width: 640px) {
+    form#addForm { grid-template-columns: 1fr; }
+    #cards { grid-template-columns: 1fr; }
+    .wifi-card { grid-template-columns: 1fr; }
+    .qr-box { align-items: flex-start; }
+    .card-actions { opacity: 1; }
+  }
+
+  /* ---------- Impresión ---------- */
+  @media print {
+    body { background: #fff; }
+    header.app, form#addForm, .toolbar, .card-actions, .empty { display: none !important; }
+    .wrap { max-width: none; padding: 0; }
+    #cards { grid-template-columns: 1fr 1fr; gap: 8mm; }
+    .wifi-card {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      box-shadow: none;
+      border: 1.5px dashed #888;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <h1>Tarjetas WiFi<span class="dot">.</span></h1>
+    <p>Añade redes, genera su QR y recorta las tarjetas.</p>
+  </header>
+
+  <form id="addForm" autocomplete="off">
+    <div class="field">
+      <label for="ssid">SSID (nombre de la red)</label>
+      <input id="ssid" type="text" maxlength="32" placeholder="MiRedWifi" required>
+    </div>
+    <div class="field">
+      <label for="enc">Cifrado</label>
+      <select id="enc">
+        <option value="WPA" selected>WPA / WPA2 / WPA3</option>
+        <option value="WEP">WEP</option>
+        <option value="nopass">Abierta (sin contraseña)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="pass">Contraseña</label>
+      <div class="pw-wrap">
+        <input id="pass" type="password" maxlength="63" placeholder="••••••••">
+        <button type="button" id="togglePw" aria-label="Mostrar u ocultar contraseña">ver</button>
+      </div>
+    </div>
+    <button type="submit" class="primary">Añadir tarjeta</button>
+    <div class="form-extra">
+      <label><input type="checkbox" id="hidden"> Red oculta</label>
+    </div>
+    <div class="form-error" id="formError"></div>
+  </form>
+
+  <div class="toolbar">
+    <h2 id="counter">0 redes</h2>
+    <div class="actions">
+      <button class="ghost" id="downloadAll" type="button">Descargar todas (PNG)</button>
+      <button class="ghost" id="printBtn" type="button">Imprimir tarjetas</button>
+    </div>
+  </div>
+
+  <div id="cards">
+    <div class="empty" id="emptyState">Todavía no hay ninguna red. Rellena el formulario de arriba para crear la primera tarjeta.</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const form = document.getElementById('addForm');
+  const ssidInput = document.getElementById('ssid');
+  const encInput = document.getElementById('enc');
+  const passInput = document.getElementById('pass');
+  const hiddenInput = document.getElementById('hidden');
+  const togglePw = document.getElementById('togglePw');
+  const formError = document.getElementById('formError');
+  const cardsEl = document.getElementById('cards');
+  const emptyState = document.getElementById('emptyState');
+  const counter = document.getElementById('counter');
+  let count = 0;
+
+  // Etiquetas legibles del cifrado
+  const encLabel = { WPA: 'WPA / WPA2 / WPA3', WEP: 'WEP', nopass: 'Red abierta' };
+
+  // Escapado según el formato WIFI: (\ ; , " :)
+  function esc(s) {
+    return s.replace(/([\\;,":])/g, '\\$1');
+  }
+
+  function buildWifiString(ssid, enc, pass, hidden) {
+    let s = 'WIFI:T:' + enc + ';S:' + esc(ssid) + ';';
+    if (enc !== 'nopass') s += 'P:' + esc(pass) + ';';
+    if (hidden) s += 'H:true;';
+    return s + ';';
+  }
+
+  // Deshabilitar contraseña si la red es abierta
+  encInput.addEventListener('change', () => {
+    const open = encInput.value === 'nopass';
+    passInput.disabled = open;
+    if (open) passInput.value = '';
+  });
+
+  togglePw.addEventListener('click', () => {
+    const show = passInput.type === 'password';
+    passInput.type = show ? 'text' : 'password';
+    togglePw.textContent = show ? 'ocultar' : 'ver';
+  });
+
+  function showError(msg) {
+    formError.textContent = msg;
+    formError.style.display = 'block';
+  }
+  function clearError() {
+    formError.style.display = 'none';
+  }
+
+  function updateCounter() {
+    counter.textContent = count + (count === 1 ? ' red' : ' redes');
+    emptyState.style.display = count === 0 ? '' : 'none';
+  }
+
+  function safeFileName(s) {
+    return s.replace(/[^a-z0-9_\-]+/gi, '_').slice(0, 40) || 'wifi';
+  }
+
+  async function downloadCard(cardEl, ssid) {
+    const actions = cardEl.querySelector('.card-actions');
+    actions.style.visibility = 'hidden';
+    try {
+      const canvas = await html2canvas(cardEl, { scale: 3, backgroundColor: '#ffffff' });
+      const a = document.createElement('a');
+      a.download = 'wifi_' + safeFileName(ssid) + '.png';
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    } finally {
+      actions.style.visibility = '';
+    }
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    clearError();
+
+    const ssid = ssidInput.value.trim();
+    const enc = encInput.value;
+    const pass = passInput.value;
+    const hidden = hiddenInput.checked;
+
+    if (!ssid) { showError('El SSID no puede estar vacío.'); return; }
+    if (enc !== 'nopass' && pass.length === 0) {
+      showError('Introduce la contraseña o marca la red como abierta.');
+      return;
+    }
+    if (enc === 'WPA' && pass.length > 0 && pass.length < 8) {
+      showError('Las contraseñas WPA/WPA2/WPA3 tienen un mínimo de 8 caracteres.');
+      return;
+    }
+
+    // ---- Construir la tarjeta ----
+    const card = document.createElement('div');
+    card.className = 'wifi-card';
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+
+    const eyebrow = document.createElement('div');
+    eyebrow.className = 'eyebrow';
+    eyebrow.textContent = hidden ? 'Red WiFi · Oculta' : 'Red WiFi';
+
+    const ssidEl = document.createElement('div');
+    ssidEl.className = 'ssid';
+    ssidEl.textContent = ssid;
+
+    meta.appendChild(eyebrow);
+    meta.appendChild(ssidEl);
+
+    if (enc !== 'nopass') {
+      const cred = document.createElement('div');
+      cred.className = 'cred';
+      const lbl = document.createElement('div');
+      lbl.className = 'label';
+      lbl.textContent = 'Contraseña';
+      const val = document.createElement('div');
+      val.className = 'value';
+      val.textContent = pass;
+      cred.appendChild(lbl);
+      cred.appendChild(val);
+      meta.appendChild(cred);
+    }
+
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.textContent = encLabel[enc];
+    meta.appendChild(badge);
+
+    const qrBox = document.createElement('div');
+    qrBox.className = 'qr-box';
+    const qrDiv = document.createElement('div');
+    qrDiv.className = 'qr';
+    qrBox.appendChild(qrDiv);
+    const hint = document.createElement('div');
+    hint.className = 'hint';
+    hint.textContent = 'Escanea para conectar';
+    qrBox.appendChild(hint);
+
+    const actions = document.createElement('div');
+    actions.className = 'card-actions';
+    const dlBtn = document.createElement('button');
+    dlBtn.type = 'button';
+    dlBtn.textContent = 'PNG';
+    dlBtn.title = 'Descargar esta tarjeta como imagen';
+    dlBtn.addEventListener('click', () => downloadCard(card, ssid));
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'del';
+    delBtn.textContent = 'Eliminar';
+    delBtn.addEventListener('click', () => {
+      card.remove();
+      count--;
+      updateCounter();
+    });
+    actions.appendChild(dlBtn);
+    actions.appendChild(delBtn);
+
+    card.appendChild(meta);
+    card.appendChild(qrBox);
+    card.appendChild(actions);
+    cardsEl.appendChild(card);
+
+    // Generar QR
+    new QRCode(qrDiv, {
+      text: buildWifiString(ssid, enc, pass, hidden),
+      width: 140,
+      height: 140,
+      correctLevel: QRCode.CorrectLevel.M
+    });
+
+    count++;
+    updateCounter();
+
+    // Reset parcial: mantener el cifrado seleccionado
+    ssidInput.value = '';
+    passInput.value = '';
+    hiddenInput.checked = false;
+    ssidInput.focus();
+  });
+
+  document.getElementById('printBtn').addEventListener('click', () => {
+    if (count === 0) { showError('Añade al menos una red antes de imprimir.'); return; }
+    window.print();
+  });
+
+  document.getElementById('downloadAll').addEventListener('click', async () => {
+    if (count === 0) { showError('Añade al menos una red antes de descargar.'); return; }
+    const cards = cardsEl.querySelectorAll('.wifi-card');
+    for (const c of cards) {
+      const ssid = c.querySelector('.ssid').textContent;
+      await downloadCard(c, ssid);
+      // pequeña pausa para que el navegador procese cada descarga
+      await new Promise(r => setTimeout(r, 400));
+    }
+  });
+
+  updateCounter();
+})();
+</script>
+</body>
+</html>
