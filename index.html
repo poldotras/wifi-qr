@@ -3,446 +3,297 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tarjetas WiFi · Generador con QR</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #eef1f4;
-    --ink: #14202b;
-    --ink-soft: #5a6b7a;
-    --card: #ffffff;
-    --line: #d3dae1;
-    --accent: #0b5fff;
-    --accent-dark: #0847bd;
-    --danger: #c0392b;
-    --radius: 14px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Space Grotesk', system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--ink);
-    min-height: 100vh;
-  }
-  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 20px 80px; }
-
-  header.app { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 28px; }
-  header.app h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
-  header.app h1 .dot { color: var(--accent); }
-  header.app p { color: var(--ink-soft); font-size: 0.9rem; }
-
-  /* ---------- Formulario ---------- */
-  form#addForm {
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 20px;
-    display: grid;
-    grid-template-columns: 1.4fr 1fr 1.4fr auto;
-    gap: 14px;
-    align-items: end;
-    box-shadow: 0 1px 3px rgba(20,32,43,.06);
-  }
-  .field label { display: block; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin-bottom: 6px; }
-  .field input, .field select {
-    width: 100%;
-    font: inherit;
-    padding: 10px 12px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: #fbfcfd;
-    color: var(--ink);
-    outline: none;
-    transition: border-color .15s, box-shadow .15s;
-  }
-  .field input:focus-visible, .field select:focus-visible {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(11,95,255,.15);
-  }
-  .field input:disabled { background: #eef1f4; color: var(--ink-soft); cursor: not-allowed; }
-  .pw-wrap { position: relative; }
-  .pw-wrap button {
-    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-    border: none; background: none; cursor: pointer; font-size: 0.75rem;
-    color: var(--ink-soft); padding: 4px 6px; border-radius: 6px;
-  }
-  .pw-wrap button:hover { color: var(--ink); background: var(--bg); }
-
-  button.primary {
-    font: inherit; font-weight: 500;
-    background: var(--accent); color: #fff;
-    border: none; border-radius: 8px;
-    padding: 11px 20px; cursor: pointer;
-    transition: background .15s;
-    white-space: nowrap;
-  }
-  button.primary:hover { background: var(--accent-dark); }
-  button.primary:focus-visible { outline: 3px solid rgba(11,95,255,.35); outline-offset: 2px; }
-
-  .form-extra { grid-column: 1 / -1; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
-  .form-extra label { display: flex; gap: 7px; align-items: center; font-size: 0.85rem; color: var(--ink-soft); cursor: pointer; }
-  .form-error { grid-column: 1 / -1; color: var(--danger); font-size: 0.85rem; display: none; }
-
-  /* ---------- Barra de acciones ---------- */
-  .toolbar { display: flex; justify-content: space-between; align-items: center; margin: 30px 0 16px; flex-wrap: wrap; gap: 10px; }
-  .toolbar h2 { font-size: 1.05rem; font-weight: 500; color: var(--ink-soft); }
-  .toolbar .actions { display: flex; gap: 10px; }
-  button.ghost {
-    font: inherit; font-size: 0.88rem; font-weight: 500;
-    background: var(--card); color: var(--ink);
-    border: 1px solid var(--line); border-radius: 8px;
-    padding: 9px 16px; cursor: pointer;
-    transition: border-color .15s, background .15s;
-  }
-  button.ghost:hover { border-color: var(--accent); color: var(--accent); }
-  button.ghost:focus-visible { outline: 3px solid rgba(11,95,255,.35); outline-offset: 2px; }
-
-  /* ---------- Tarjetas ---------- */
-  #cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 18px; }
-  .empty {
-    grid-column: 1 / -1;
-    border: 2px dashed var(--line);
-    border-radius: var(--radius);
-    padding: 48px 20px;
-    text-align: center;
-    color: var(--ink-soft);
-    font-size: 0.95rem;
-  }
-
-  .wifi-card {
-    background: var(--card);
-    border: 2px dashed #9fb0bf;          /* línea de recorte */
-    border-radius: var(--radius);
-    padding: 22px 22px 18px;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 18px;
-    position: relative;
-    animation: pop .25s ease;
-  }
-  @keyframes pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-  @media (prefers-reduced-motion: reduce) { .wifi-card { animation: none; } }
-
-  .wifi-card .meta { min-width: 0; display: flex; flex-direction: column; }
-  .wifi-card .eyebrow {
-    font-size: 0.68rem; font-weight: 700; letter-spacing: .14em;
-    text-transform: uppercase; color: var(--accent); margin-bottom: 8px;
-    display: flex; align-items: center; gap: 8px;
-  }
-  .wifi-card .eyebrow::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-  .wifi-card .ssid {
-    font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em;
-    word-break: break-all; margin-bottom: 12px;
-  }
-  .cred { margin-bottom: 10px; }
-  .cred .label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); margin-bottom: 2px; }
-  .cred .value {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.98rem; font-weight: 500;
-    word-break: break-all;
-  }
-  .badge {
-    display: inline-block; margin-top: auto;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.7rem; font-weight: 600;
-    background: var(--bg); border: 1px solid var(--line);
-    border-radius: 999px; padding: 3px 10px;
-    color: var(--ink-soft); align-self: flex-start;
-  }
-
-  .qr-box { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-  .qr-box .qr { background: #fff; padding: 6px; border: 1px solid var(--line); border-radius: 8px; line-height: 0; }
-  .qr-box .hint { font-size: 0.65rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .08em; }
-
-  .card-actions {
-    position: absolute; top: 10px; right: 10px;
-    display: flex; gap: 6px; opacity: 0; transition: opacity .15s;
-  }
-  .wifi-card:hover .card-actions, .wifi-card:focus-within .card-actions { opacity: 1; }
-  .card-actions button {
-    border: 1px solid var(--line); background: var(--card);
-    border-radius: 7px; padding: 5px 9px; font-size: 0.72rem;
-    cursor: pointer; font-family: inherit; color: var(--ink-soft);
-  }
-  .card-actions button:hover { color: var(--accent); border-color: var(--accent); }
-  .card-actions button.del:hover { color: var(--danger); border-color: var(--danger); }
-
-  @media (max-width: 980px) {
-    form#addForm { grid-template-columns: 1fr 1fr; }
-    form#addForm button.primary { grid-column: 1 / -1; }
-  }
-  @media (max-width: 640px) {
-    form#addForm { grid-template-columns: 1fr; }
-    #cards { grid-template-columns: 1fr; }
-    .wifi-card { grid-template-columns: 1fr; }
-    .qr-box { align-items: flex-start; }
-    .card-actions { opacity: 1; }
-  }
-
-  /* ---------- Impresión ---------- */
-  @media print {
-    body { background: #fff; }
-    header.app, form#addForm, .toolbar, .card-actions, .empty { display: none !important; }
-    .wrap { max-width: none; padding: 0; }
-    #cards { grid-template-columns: 1fr 1fr; gap: 8mm; }
-    .wifi-card {
-      break-inside: avoid;
-      page-break-inside: avoid;
-      box-shadow: none;
-      border: 1.5px dashed #888;
-    }
-  }
-</style>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Tarjetas WiFi · Generador gratuito de tarjetas con código QR</title>
+<meta name="description" content="Crea tarjetas imprimibles con el código QR de tu red WiFi. Tus invitados se conectan escaneando con la cámara. Gratis, sin cuentas y 100% privado: nada sale de tu navegador.">
+<link rel="canonical" href="https://wifi-qr.poldotras.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Tarjetas WiFi">
+<meta property="og:title" content="Tarjetas WiFi · Generador gratuito de tarjetas con código QR">
+<meta property="og:description" content="Crea tarjetas imprimibles con el código QR de tu red WiFi. Gratis, sin cuentas y 100% privado: nada sale de tu navegador.">
+<meta property="og:url" content="https://wifi-qr.poldotras.com/">
+<meta property="og:image" content="https://wifi-qr.poldotras.com/docs/captura-web.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e1a28">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b5fff'/%3E%3Cpath d='M14 30a26 26 0 0 1 36 0' stroke='%23fff' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3Cpath d='M21 39a16 16 0 0 1 22 0' stroke='%23fff' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='48' r='4' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/styles.css">
+<script src="assets/vendor/qrcode.min.js" defer></script>
+<script src="assets/vendor/html2canvas.min.js" defer></script>
+<script src="assets/app.js" defer></script>
 </head>
 <body>
-<div class="wrap">
-  <header class="app">
-    <h1>Tarjetas WiFi<span class="dot">.</span></h1>
-    <p>Añade redes, genera su QR y recorta las tarjetas.</p>
-  </header>
 
-  <form id="addForm" autocomplete="off">
-    <div class="field">
-      <label for="ssid">SSID (nombre de la red)</label>
-      <input id="ssid" type="text" maxlength="32" placeholder="MiRedWifi" required>
+<header class="site-head">
+  <div class="wrap bar">
+    <a class="brand" href="#">
+      <svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#0b5fff"/><path d="M14 30a26 26 0 0 1 36 0" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M21 39a16 16 0 0 1 22 0" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="32" cy="48" r="4" fill="#fff"/></svg>
+      Tarjetas WiFi<span class="dot">.</span>
+    </a>
+    <nav aria-label="Secciones de la página">
+      <a href="#caracteristicas">Características</a>
+      <a href="#como-funciona">Cómo funciona</a>
+      <a href="#generador">Generador</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://github.com/poldotras/wifi-qr" rel="noopener noreferrer" target="_blank">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap inner">
+    <div>
+      <p class="eyebrow">Gratis · Sin cuentas · Código abierto</p>
+      <h1>Tu WiFi, a un escaneo de distancia</h1>
+      <p class="sub">Crea tarjetas elegantes con el código QR de tu red, listas para imprimir y recortar. Tus invitados se conectan apuntando con la cámara del móvil — sin deletrear contraseñas nunca más.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#generador">Crear mi tarjeta</a>
+        <a class="btn btn-outline" href="#como-funciona">Ver cómo funciona</a>
+      </div>
+      <ul class="trust">
+        <li>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          100% privado: tus contraseñas nunca salen de tu navegador
+        </li>
+        <li>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+          Compatible con la cámara de iOS y Android, sin apps extra
+        </li>
+        <li>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+          Sin registro, sin anuncios y sin rastreadores
+        </li>
+      </ul>
     </div>
-    <div class="field">
-      <label for="enc">Cifrado</label>
-      <select id="enc">
-        <option value="WPA" selected>WPA / WPA2 / WPA3</option>
-        <option value="WEP">WEP</option>
-        <option value="nopass">Abierta (sin contraseña)</option>
-      </select>
+    <div class="showcase">
+      <div id="heroDemo" aria-label="Tarjeta WiFi de ejemplo con código QR"></div>
+      <p class="caption">Tarjeta generada con una red de ejemplo</p>
     </div>
-    <div class="field">
-      <label for="pass">Contraseña</label>
-      <div class="pw-wrap">
-        <input id="pass" type="password" maxlength="63" placeholder="••••••••">
-        <button type="button" id="togglePw" aria-label="Mostrar u ocultar contraseña">ver</button>
+  </div>
+</section>
+
+<section class="features section" id="caracteristicas">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Por qué te va a gustar</p>
+      <h2>Todo lo que necesitas, nada que instalar</h2>
+      <p>Una sola página web, sin servidores ni cuentas. Ábrela, crea tus tarjetas y listo.</p>
+    </div>
+    <div class="grid">
+      <div class="feature">
+        <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <h3>Privacidad de verdad</h3>
+        <p>Todo se procesa en tu dispositivo. Sin servidores, sin analítica, sin cookies: la contraseña no viaja a ninguna parte.</p>
+      </div>
+      <div class="feature">
+        <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></div>
+        <h3>Imprime y recorta</h3>
+        <p>Hoja de impresión optimizada con bordes de recorte a dos columnas. También puedes guardarla como PDF.</p>
+      </div>
+      <div class="feature">
+        <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+        <h3>Descarga en PNG</h3>
+        <p>Cada tarjeta en alta resolución (3×), individualmente o todas de golpe. Perfectas para compartir o enmarcar.</p>
+      </div>
+      <div class="feature">
+        <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></div>
+        <h3>Estándar universal</h3>
+        <p>Usa el formato QR WiFi que iOS y Android entienden de serie. Se escanea con la propia cámara, sin apps.</p>
+      </div>
+      <div class="feature">
+        <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></div>
+        <h3>Todas tus redes</h3>
+        <p>WPA / WPA2 / WPA3, WEP, redes abiertas y redes ocultas. Crea tantas tarjetas como redes tengas.</p>
+      </div>
+      <div class="feature">
+        <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22.61 16.95A5 5 0 0 0 18 10h-1.26a8 8 0 1 0-13.42 7.69"/><line x1="1" y1="1" x2="23" y2="23"/></svg></div>
+        <h3>Funciona sin conexión</h3>
+        <p>No depende de ningún servicio externo: una vez cargada, la página funciona incluso sin internet.</p>
       </div>
     </div>
-    <button type="submit" class="primary">Añadir tarjeta</button>
-    <div class="form-extra">
-      <label><input type="checkbox" id="hidden"> Red oculta</label>
-    </div>
-    <div class="form-error" id="formError"></div>
-  </form>
+  </div>
+</section>
 
-  <div class="toolbar">
-    <h2 id="counter">0 redes</h2>
-    <div class="actions">
-      <button class="ghost" id="downloadAll" type="button">Descargar todas (PNG)</button>
-      <button class="ghost" id="printBtn" type="button">Imprimir tarjetas</button>
+<section class="how section" id="como-funciona">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Guía rápida</p>
+      <h2>De cero a tarjeta en menos de un minuto</h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="num" aria-hidden="true">1</div>
+        <h3>Escribe los datos de tu red</h3>
+        <p>Nombre de la red (SSID), tipo de cifrado y contraseña. ¿Es una red oculta? Marca la casilla y listo.</p>
+      </div>
+      <div class="step">
+        <div class="num" aria-hidden="true">2</div>
+        <h3>Pulsa <kbd>Añadir tarjeta</kbd></h3>
+        <p>El código QR se genera al instante, sin salir de tu navegador. Repite con tantas redes como quieras.</p>
+      </div>
+      <div class="step">
+        <div class="num" aria-hidden="true">3</div>
+        <h3>Imprime o descarga</h3>
+        <p>Imprime la hoja y recorta por la línea de puntos, o descarga cada tarjeta como imagen PNG en alta resolución.</p>
+      </div>
+    </div>
+    <div class="result-panel">
+      <div class="txt">
+        <h3>El resultado: una tarjeta lista para recortar</h3>
+        <p>Así queda una tarjeta terminada, con el nombre de la red, la contraseña a la vista para quien prefiera teclearla y el código QR para quien prefiera escanear.</p>
+        <span class="tip">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM21 14v.01M14 21h.01M17 21h.01M21 17v.01M21 21v.01"/></svg>
+          Pruébala: escanéala con la cámara del móvil
+        </span>
+      </div>
+      <div id="resultDemo" aria-label="Ejemplo de tarjeta WiFi terminada con código QR"></div>
     </div>
   </div>
+</section>
 
-  <div id="cards">
-    <div class="empty" id="emptyState">Todavía no hay ninguna red. Rellena el formulario de arriba para crear la primera tarjeta.</div>
+<section class="section" id="generador">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">El generador</p>
+      <h2>Crea tus tarjetas</h2>
+      <p>Rellena los datos de tu red. Todo ocurre en tu navegador: nada se envía ni se guarda.</p>
+    </div>
+
+    <form id="addForm" autocomplete="off">
+      <div class="field">
+        <label for="ssid">SSID (nombre de la red)</label>
+        <input id="ssid" type="text" maxlength="32" placeholder="MiRedWifi" spellcheck="false" required>
+      </div>
+      <div class="field">
+        <label for="enc">Cifrado</label>
+        <select id="enc">
+          <option value="WPA" selected>WPA / WPA2 / WPA3</option>
+          <option value="WEP">WEP</option>
+          <option value="nopass">Abierta (sin contraseña)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="pass">Contraseña</label>
+        <div class="pw-wrap">
+          <!-- type="text" + enmascarado CSS a propósito: evita que el gestor de
+               contraseñas del navegador ofrezca guardar la clave WiFi -->
+          <input id="pass" type="text" class="masked" maxlength="64" placeholder="••••••••" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <button type="button" id="togglePw" aria-label="Mostrar u ocultar contraseña" aria-pressed="false">ver</button>
+        </div>
+      </div>
+      <button type="submit" class="primary">Añadir tarjeta</button>
+      <div class="form-extra">
+        <label><input type="checkbox" id="hidden"> Red oculta</label>
+      </div>
+      <div class="form-error" id="formError" role="alert"></div>
+    </form>
+
+    <div class="toolbar">
+      <h3 id="counter" aria-live="polite" tabindex="-1">0 redes</h3>
+      <div class="actions">
+        <button class="ghost" id="downloadAll" type="button">Descargar todas (PNG)</button>
+        <button class="ghost" id="printBtn" type="button">Imprimir tarjetas</button>
+      </div>
+    </div>
+
+    <p class="dl-status" id="dlStatus" aria-live="polite"></p>
+
+    <div id="cards">
+      <div class="empty" id="emptyState">Todavía no hay ninguna red. Rellena el formulario de arriba para crear la primera tarjeta.</div>
+    </div>
   </div>
-</div>
+</section>
 
-<script>
-(function () {
-  const form = document.getElementById('addForm');
-  const ssidInput = document.getElementById('ssid');
-  const encInput = document.getElementById('enc');
-  const passInput = document.getElementById('pass');
-  const hiddenInput = document.getElementById('hidden');
-  const togglePw = document.getElementById('togglePw');
-  const formError = document.getElementById('formError');
-  const cardsEl = document.getElementById('cards');
-  const emptyState = document.getElementById('emptyState');
-  const counter = document.getElementById('counter');
-  let count = 0;
+<section class="faq section" id="faq">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Dudas habituales</p>
+      <h2>Preguntas frecuentes</h2>
+    </div>
+    <div class="list">
+      <details>
+        <summary>¿Es seguro escribir aquí la contraseña de mi WiFi?</summary>
+        <p>Sí. Toda la página funciona en local, dentro de tu navegador: el código QR se genera en tu dispositivo y no se realiza ninguna petición con tus datos. No hay servidores, ni cuentas, ni analítica.</p>
+        <p>Además, el código es abierto: puedes auditarlo línea a línea en GitHub.</p>
+      </details>
+      <details>
+        <summary>¿Dónde se guardan mis tarjetas?</summary>
+        <p>Solo en la memoria de la pestaña mientras está abierta. Al recargar la página desaparecen. Es deliberado: así ninguna contraseña queda almacenada en el navegador.</p>
+      </details>
+      <details>
+        <summary>¿Cómo se escanea el código QR?</summary>
+        <p>En iPhone, abre la cámara, apunta al QR y toca la notificación «Unirse a la red». En Android, usa la cámara o el icono de QR en los ajustes de WiFi. En ambos casos el sistema se conecta automáticamente, sin teclear nada.</p>
+      </details>
+      <details>
+        <summary>¿Funciona con redes ocultas o sin contraseña?</summary>
+        <p>Sí. Puedes marcar la red como oculta (se añade el indicador correspondiente al QR) y también crear tarjetas de redes abiertas, sin contraseña, como las de una sala de espera.</p>
+      </details>
+      <details>
+        <summary>¿Puedo usarlo en mi negocio?</summary>
+        <p>Claro: cafeterías, consultas, alojamientos turísticos, oficinas, aulas… El proyecto es gratuito y de código abierto bajo licencia MIT, también para uso comercial.</p>
+      </details>
+    </div>
+  </div>
+</section>
 
-  // Etiquetas legibles del cifrado
-  const encLabel = { WPA: 'WPA / WPA2 / WPA3', WEP: 'WEP', nopass: 'Red abierta' };
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="cols">
+      <div class="about">
+        <a class="brand" href="#">
+          <svg width="24" height="24" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#0b5fff"/><path d="M14 30a26 26 0 0 1 36 0" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M21 39a16 16 0 0 1 22 0" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="32" cy="48" r="4" fill="#fff"/></svg>
+          Tarjetas WiFi<span class="dot">.</span>
+        </a>
+        <p>Un pequeño proyecto personal, gratuito y de código abierto, para compartir tu WiFi sin deletrear contraseñas. Tus datos nunca salen de tu navegador.</p>
+      </div>
+      <nav aria-label="Enlaces del pie de página">
+        <a href="https://github.com/poldotras/wifi-qr" rel="noopener noreferrer" target="_blank">Código fuente en GitHub</a>
+        <a href="https://github.com/poldotras/wifi-qr/blob/main/LICENSE" rel="noopener noreferrer" target="_blank">Licencia MIT</a>
+        <button type="button" data-open-legal>Aviso legal y privacidad</button>
+      </nav>
+    </div>
+    <div class="legal-line">
+      <span>© <span id="year">2026</span> poldotras · Hecho con JavaScript vanilla, sin frameworks.</span>
+      <span>Sin cookies · Sin rastreadores · Sin servidores</span>
+    </div>
+  </div>
+</footer>
 
-  // Escapado según el formato WIFI: (\ ; , " :)
-  function esc(s) {
-    return s.replace(/([\\;,":])/g, '\\$1');
-  }
+<dialog class="legal" id="avisoLegal" aria-labelledby="legalTitle">
+  <div class="dlg-head">
+    <h2 id="legalTitle">Aviso legal y política de privacidad</h2>
+    <button type="button" id="closeLegal">Cerrar</button>
+  </div>
+  <div class="dlg-body">
+    <h3>1. Titular del sitio</h3>
+    <p>Este sitio web («Tarjetas WiFi», accesible en wifi-qr.poldotras.com) es un proyecto personal, gratuito y de código abierto, publicado por <strong>poldotras</strong>. Puedes contactar con el titular a través de <a href="mailto:poldotras@gmail.com">poldotras@gmail.com</a> o del repositorio <a href="https://github.com/poldotras/wifi-qr" rel="noopener noreferrer" target="_blank">github.com/poldotras/wifi-qr</a>.</p>
 
-  function buildWifiString(ssid, enc, pass, hidden) {
-    let s = 'WIFI:T:' + enc + ';S:' + esc(ssid) + ';';
-    if (enc !== 'nopass') s += 'P:' + esc(pass) + ';';
-    if (hidden) s += 'H:true;';
-    return s + ';';
-  }
+    <h3>2. Objeto</h3>
+    <p>La finalidad de este sitio es ofrecer una herramienta gratuita que genera tarjetas imprimibles con códigos QR de conexión a redes WiFi. Su uso es libre, no requiere registro y no supone la comunicación de datos a terceros.</p>
 
-  // Deshabilitar contraseña si la red es abierta
-  encInput.addEventListener('change', () => {
-    const open = encInput.value === 'nopass';
-    passInput.disabled = open;
-    if (open) passInput.value = '';
-  });
+    <h3>3. Condiciones de uso</h3>
+    <p>El usuario se compromete a hacer un uso lícito de la herramienta. En particular, a generar códigos QR únicamente de redes de las que sea titular o sobre las que cuente con autorización para compartir el acceso. El usuario es el único responsable de las tarjetas que genere, imprima o distribuya.</p>
 
-  togglePw.addEventListener('click', () => {
-    const show = passInput.type === 'password';
-    passInput.type = show ? 'text' : 'password';
-    togglePw.textContent = show ? 'ocultar' : 'ver';
-  });
+    <h3>4. Propiedad intelectual</h3>
+    <p>El código fuente de este sitio se publica bajo licencia <a href="https://github.com/poldotras/wifi-qr/blob/main/LICENSE" rel="noopener noreferrer" target="_blank">MIT</a>: puedes usarlo, modificarlo y redistribuirlo libremente. Incluye las bibliotecas <em>qrcodejs</em> (MIT) y <em>html2canvas</em> (MIT), y las tipografías <em>Space Grotesk</em> e <em>IBM Plex Mono</em>, publicadas bajo la SIL Open Font License. Las tarjetas generadas pertenecen exclusivamente al usuario.</p>
 
-  function showError(msg) {
-    formError.textContent = msg;
-    formError.style.display = 'block';
-  }
-  function clearError() {
-    formError.style.display = 'none';
-  }
+    <h3>5. Exención de responsabilidad</h3>
+    <p>La herramienta se ofrece «tal cual», sin garantías de ningún tipo. El titular no se hace responsable de posibles errores en los códigos generados, de la disponibilidad del sitio, ni del uso que el usuario o terceros hagan de las tarjetas creadas, incluida la difusión no deseada de credenciales de acceso a redes.</p>
 
-  function updateCounter() {
-    counter.textContent = count + (count === 1 ? ' red' : ' redes');
-    emptyState.style.display = count === 0 ? '' : 'none';
-  }
+    <h3>6. Privacidad y cookies</h3>
+    <p>Esta herramienta <strong>no recoge ni trata ningún dato personal</strong>:</p>
+    <ul>
+      <li>Todo el procesamiento (formulario, generación de QR y de imágenes) ocurre localmente en tu navegador.</li>
+      <li>Ninguno de los datos que introduces (nombres de red, contraseñas) se envía a ningún servidor ni a terceros; tampoco se cargan recursos externos.</li>
+      <li>No se utilizan cookies ni ninguna otra tecnología de seguimiento, analítica o publicidad.</li>
+      <li>Los datos introducidos se mantienen solo en la memoria de la pestaña y se eliminan al recargarla o cerrarla. El campo de contraseña está diseñado, además, para que el gestor de contraseñas del navegador no ofrezca guardarla.</li>
+    </ul>
+    <p>Como cualquier sitio web, esta página se sirve a través de una infraestructura de alojamiento y CDN cuyos servidores, para poder entregarte la página, reciben los datos técnicos habituales de conexión (como tu dirección IP). Este tratamiento es técnico e inevitable en la web, y el titular no accede a esa información ni la utiliza.</p>
 
-  function safeFileName(s) {
-    return s.replace(/[^a-z0-9_\-]+/gi, '_').slice(0, 40) || 'wifi';
-  }
+    <h3>7. Legislación aplicable</h3>
+    <p>Este aviso se rige por la legislación española. Al tratarse de un proyecto personal, gratuito y sin actividad económica, este sitio no constituye un servicio de la sociedad de la información a efectos de la Ley 34/2002 (LSSI-CE); no obstante, se publica esta información de forma voluntaria, por transparencia. La normativa europea de protección de datos (RGPD) resulta de aplicación en lo que corresponda.</p>
+  </div>
+</dialog>
 
-  async function downloadCard(cardEl, ssid) {
-    const actions = cardEl.querySelector('.card-actions');
-    actions.style.visibility = 'hidden';
-    try {
-      const canvas = await html2canvas(cardEl, { scale: 3, backgroundColor: '#ffffff' });
-      const a = document.createElement('a');
-      a.download = 'wifi_' + safeFileName(ssid) + '.png';
-      a.href = canvas.toDataURL('image/png');
-      a.click();
-    } finally {
-      actions.style.visibility = '';
-    }
-  }
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    clearError();
-
-    const ssid = ssidInput.value.trim();
-    const enc = encInput.value;
-    const pass = passInput.value;
-    const hidden = hiddenInput.checked;
-
-    if (!ssid) { showError('El SSID no puede estar vacío.'); return; }
-    if (enc !== 'nopass' && pass.length === 0) {
-      showError('Introduce la contraseña o marca la red como abierta.');
-      return;
-    }
-    if (enc === 'WPA' && pass.length > 0 && pass.length < 8) {
-      showError('Las contraseñas WPA/WPA2/WPA3 tienen un mínimo de 8 caracteres.');
-      return;
-    }
-
-    // ---- Construir la tarjeta ----
-    const card = document.createElement('div');
-    card.className = 'wifi-card';
-
-    const meta = document.createElement('div');
-    meta.className = 'meta';
-
-    const eyebrow = document.createElement('div');
-    eyebrow.className = 'eyebrow';
-    eyebrow.textContent = hidden ? 'Red WiFi · Oculta' : 'Red WiFi';
-
-    const ssidEl = document.createElement('div');
-    ssidEl.className = 'ssid';
-    ssidEl.textContent = ssid;
-
-    meta.appendChild(eyebrow);
-    meta.appendChild(ssidEl);
-
-    if (enc !== 'nopass') {
-      const cred = document.createElement('div');
-      cred.className = 'cred';
-      const lbl = document.createElement('div');
-      lbl.className = 'label';
-      lbl.textContent = 'Contraseña';
-      const val = document.createElement('div');
-      val.className = 'value';
-      val.textContent = pass;
-      cred.appendChild(lbl);
-      cred.appendChild(val);
-      meta.appendChild(cred);
-    }
-
-    const badge = document.createElement('span');
-    badge.className = 'badge';
-    badge.textContent = encLabel[enc];
-    meta.appendChild(badge);
-
-    const qrBox = document.createElement('div');
-    qrBox.className = 'qr-box';
-    const qrDiv = document.createElement('div');
-    qrDiv.className = 'qr';
-    qrBox.appendChild(qrDiv);
-    const hint = document.createElement('div');
-    hint.className = 'hint';
-    hint.textContent = 'Escanea para conectar';
-    qrBox.appendChild(hint);
-
-    const actions = document.createElement('div');
-    actions.className = 'card-actions';
-    const dlBtn = document.createElement('button');
-    dlBtn.type = 'button';
-    dlBtn.textContent = 'PNG';
-    dlBtn.title = 'Descargar esta tarjeta como imagen';
-    dlBtn.addEventListener('click', () => downloadCard(card, ssid));
-    const delBtn = document.createElement('button');
-    delBtn.type = 'button';
-    delBtn.className = 'del';
-    delBtn.textContent = 'Eliminar';
-    delBtn.addEventListener('click', () => {
-      card.remove();
-      count--;
-      updateCounter();
-    });
-    actions.appendChild(dlBtn);
-    actions.appendChild(delBtn);
-
-    card.appendChild(meta);
-    card.appendChild(qrBox);
-    card.appendChild(actions);
-    cardsEl.appendChild(card);
-
-    // Generar QR
-    new QRCode(qrDiv, {
-      text: buildWifiString(ssid, enc, pass, hidden),
-      width: 140,
-      height: 140,
-      correctLevel: QRCode.CorrectLevel.M
-    });
-
-    count++;
-    updateCounter();
-
-    // Reset parcial: mantener el cifrado seleccionado
-    ssidInput.value = '';
-    passInput.value = '';
-    hiddenInput.checked = false;
-    ssidInput.focus();
-  });
-
-  document.getElementById('printBtn').addEventListener('click', () => {
-    if (count === 0) { showError('Añade al menos una red antes de imprimir.'); return; }
-    window.print();
-  });
-
-  document.getElementById('downloadAll').addEventListener('click', async () => {
-    if (count === 0) { showError('Añade al menos una red antes de descargar.'); return; }
-    const cards = cardsEl.querySelectorAll('.wifi-card');
-    for (const c of cards) {
-      const ssid = c.querySelector('.ssid').textContent;
-      await downloadCard(c, ssid);
-      // pequeña pausa para que el navegador procese cada descarga
-      await new Promise(r => setTimeout(r, 400));
-    }
-  });
-
-  updateCounter();
-})();
-</script>
 </body>
 </html>
