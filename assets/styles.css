@@ -86,6 +86,7 @@ section { scroll-margin-top: 24px; }
   display: flex; align-items: center; gap: 10px;
   color: var(--on-navy); text-decoration: none;
   font-weight: 700; font-size: 1.08rem; letter-spacing: -0.02em;
+  white-space: nowrap;
 }
 .brand svg { display: block; }
 .brand .dot { color: var(--accent); }
@@ -455,15 +456,23 @@ dialog.legal {
   border: none; border-radius: var(--radius);
   max-width: 680px; width: calc(100vw - 40px);
   max-height: calc(100vh - 80px);
+  max-height: calc(100dvh - 80px);
   padding: 0;
+  /* El reset universal pone margin:0; recuperar el centrado nativo */
+  margin: auto;
+  /* Recortar las esquinas de cabecera y cuerpo al radio del diálogo */
+  overflow: hidden;
   box-shadow: 0 30px 80px rgba(0,0,0,.35);
   color: var(--ink);
+  background: var(--card);
 }
+dialog.legal[open] { display: flex; flex-direction: column; }
 dialog.legal::backdrop { background: rgba(14,26,40,.6); }
 dialog.legal .dlg-head {
   display: flex; justify-content: space-between; align-items: center;
+  gap: 12px;
   padding: 20px 26px; border-bottom: 1px solid var(--line);
-  position: sticky; top: 0; background: var(--card);
+  flex: none; background: var(--card);
 }
 dialog.legal .dlg-head h2 { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.01em; }
 dialog.legal .dlg-head button {
@@ -473,7 +482,11 @@ dialog.legal .dlg-head button {
   color: var(--ink-soft);
 }
 dialog.legal .dlg-head button:hover { border-color: var(--accent); color: var(--accent); }
-dialog.legal .dlg-body { padding: 22px 26px 30px; overflow-y: auto; }
+dialog.legal .dlg-body {
+  padding: 22px 26px 30px;
+  overflow-y: auto; min-height: 0;
+  overscroll-behavior: contain;
+}
 dialog.legal .dlg-body h3 { font-size: 0.95rem; font-weight: 700; margin: 20px 0 6px; }
 dialog.legal .dlg-body h3:first-child { margin-top: 0; }
 dialog.legal .dlg-body p, dialog.legal .dlg-body li { font-size: 0.88rem; color: var(--ink-soft); }
@@ -490,15 +503,35 @@ dialog.legal .dlg-body a { color: var(--accent); }
   form#addForm { grid-template-columns: 1fr 1fr; }
   form#addForm button.primary { grid-column: 1 / -1; }
 }
+@media (max-width: 720px) {
+  /* Cabecera apilada: marca arriba y navegación centrada debajo */
+  .site-head .bar { flex-direction: column; align-items: center; gap: 4px; padding: 14px 0 10px; }
+  .site-head nav { justify-content: center; }
+  .site-head nav a { padding: 6px 10px; font-size: 0.84rem; }
+}
 @media (max-width: 640px) {
   .section { padding: 56px 0; }
+  .hero .inner { padding: 36px 0 48px; gap: 34px; }
+  .hero .cta-row { flex-direction: column; align-items: stretch; }
+  .hero .cta-row .btn { justify-content: center; }
   .features .grid, .steps { grid-template-columns: 1fr; }
+  .result-panel { padding: 28px 18px; }
   form#addForm { grid-template-columns: 1fr; }
+  .toolbar .actions { width: 100%; }
+  .toolbar .actions button { flex: 1; }
   #cards { grid-template-columns: 1fr; }
-  .wifi-card { grid-template-columns: 1fr; }
+  .wifi-card { grid-template-columns: 1fr; padding: 18px 16px 16px; }
   .qr-box { align-items: flex-start; }
   .card-actions { opacity: 1; }
   .hero .showcase .wifi-card, .result-panel .wifi-card { transform: none; }
+  dialog.legal {
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+  }
+  dialog.legal .dlg-head { padding: 16px 18px; }
+  dialog.legal .dlg-head h2 { font-size: 1.05rem; }
+  dialog.legal .dlg-body { padding: 18px 18px 24px; }
 }
 
 /* ---------- Impresión: solo las tarjetas del generador ---------- */
