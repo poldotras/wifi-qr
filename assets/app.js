@@ -280,12 +280,18 @@
     for (var j = 0; j < legalOpeners.length; j++) {
       legalOpeners[j].addEventListener('click', function () {
         legalDialog.showModal();
+        // Bloquear el scroll del fondo mientras el diálogo está abierto
+        document.body.style.overflow = 'hidden';
       });
     }
     legalClose.addEventListener('click', function () { legalDialog.close(); });
     // Cerrar al pulsar sobre el fondo oscurecido
     legalDialog.addEventListener('click', function (e) {
       if (e.target === legalDialog) legalDialog.close();
+    });
+    // El evento close cubre el botón, el fondo y la tecla Escape
+    legalDialog.addEventListener('close', function () {
+      document.body.style.overflow = '';
     });
   }
 
